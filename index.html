@@ -90,6 +90,7 @@ footer{padding:26px 0 40px;font-size:14px;border-top:2px solid var(--mist)}
 </head>
 <body>
 
+<!-- Header: title + experiment tabs -->
 <header>
   <div class="wrap">
     <h1>كشف وتقدير النتريت (NO₂⁻) في الماء</h1>
@@ -101,6 +102,7 @@ footer{padding:26px 0 40px;font-size:14px;border-top:2px solid var(--mist)}
   </div>
 </header>
 
+<!-- Animated lab: SVG stage (left) + step list (right). Both are filled by JavaScript -->
 <main class="wrap">
   <div class="lab">
     <div>
@@ -119,6 +121,7 @@ footer{padding:26px 0 40px;font-size:14px;border-top:2px solid var(--mist)}
   </div>
 </main>
 
+<!-- Original video: its source is set in JavaScript from VIDEO_PATH (do not put the path here) -->
 <section class="blk" id="video">
   <div class="wrap">
     <h2>الفيديو الأصلي للتجربة</h2>
@@ -132,6 +135,7 @@ footer{padding:26px 0 40px;font-size:14px;border-top:2px solid var(--mist)}
 
 <section class="blk">
   <div class="wrap">
+    <!-- Results tables -->
     <h2>النتائج</h2>
     <div class="two">
       <div>
@@ -160,6 +164,7 @@ footer{padding:26px 0 40px;font-size:14px;border-top:2px solid var(--mist)}
 
 <section class="blk">
   <div class="wrap">
+    <!-- Chemistry explanation -->
     <h2>ليه بيحصل التغيّر في اللون؟</h2>
     <div class="two">
       <div>
@@ -180,16 +185,17 @@ footer{padding:26px 0 40px;font-size:14px;border-top:2px solid var(--mist)}
 
 <script>
 /* ============================================================
-   مكان مسار الفيديو: غيّر القيمة دي لاسم الملف (أو مساره) بعد ما ترفعه على GitHub.
-   أمثلة:  "experiment.mp4"   أو   "videos/experiment.mp4"
+   VIDEO PATH
+   - Relative path to the video, in the same GitHub folder as index.html
+   - File names are case-sensitive on GitHub Pages
    ============================================================ */
-const VIDEO_PATH = "WhatsApp_Video_2026-10-14_at_6_40_09_PM.mp4";
+const VIDEO_PATH = "experiment.mp4";
 
-/* ---------- الألوان (أبيض ولبني فقط) ---------- */
+/* ---------- Colors (white + light blue only): liquid shades from clear to deep ---------- */
 const C = ['#eaf6fd','#cbe9fa','#9fd7f6','#6cc0ee','#3aa5e2','#1e86c4'];
 const INK = '#0d4d75', SKY = '#bfe5fa';
 
-/* ---------- بيانات التجربتين ---------- */
+/* ---------- Experiment data: S(level, colorIndex, count) builds the state of every tube ---------- */
 const S = (lv, c, n) => Array.from({length:n}, () => [lv, c]);
 const EXPS = {
   A: {
@@ -222,13 +228,13 @@ const EXPS = {
   }
 };
 
-/* ---------- الحالة والعناصر ---------- */
+/* ---------- State and DOM elements ---------- */
 const $ = s => document.querySelector(s);
 const svg = $('#svg'), clock = $('#clock'), clockT = $('#clockT'), stepsEl = $('#steps');
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let cur = 'A', idx = 0, auto = !reduce, timeout = null, raf = null;
 
-/* ---------- بناء الرسم ---------- */
+/* ---------- Build the SVG lab bench and the step list for the current experiment ---------- */
 function build() {
   const e = EXPS[cur], n = e.tubes.length, w = 800 / n;
   const wide = n === 2, tw = wide ? 78 : 58, th = 190, ty = 70;
@@ -259,7 +265,7 @@ function build() {
     `<li id="st${i}"><button data-i="${i}">${i + 1}. ${s.t}</button><div class="d">${s.d}</div></li>`).join('');
 }
 
-/* ---------- تطبيق خطوة ---------- */
+/* ---------- Apply one step: helpers, then show() ---------- */
 function paint(i, lv, c) {
   const l = $('#liq' + i);
   l.style.setProperty('--lv', lv);
@@ -276,7 +282,7 @@ function show(i) {
   idx = Math.max(0, Math.min(i, EXPS[cur].steps.length - 1));
   const e = EXPS[cur], s = e.steps[idx], n = e.tubes.length;
 
-  /* آخر مستوى سائل معروف حتى هذه الخطوة */
+  /* Latest liquid state defined at or before this step */
   let state = S(0, 0, n);
   for (let k = 0; k <= idx; k++) if (e.steps[k].set) state = e.steps[k].set;
   state.forEach((v, k) => paint(k, v[0], v[1]));
@@ -286,12 +292,12 @@ function show(i) {
   clock.classList.toggle('on', !!s.timer);
   clockT.textContent = fmt(0);
 
-  /* ألوان النتيجة */
+  /* Result colors and badges */
   if (s.badges) s.badges.forEach((b, k) => badge(k, b[0], b[1], true));
   if (s.final) for (let k = 0; k < n; k++) { paint(k, .45, e.cols[k]); badge(k, e.badges[k][0], e.badges[k][1], true); }
   if (cur === 'B' && idx > 4) clock.classList.remove('on');
 
-  /* مؤقت بتسريع زمني */
+  /* Time-lapse timer: runs fast, reveals tube colors when thresholds (seconds) are passed */
   if (s.timer) {
     const t0 = performance.now(), dur = reduce ? 10 : e.dur, done = new Set();
     const tick = now => {
@@ -305,7 +311,7 @@ function show(i) {
     raf = requestAnimationFrame(tick);
   }
 
-  /* قائمة الخطوات */
+  /* Highlight the active step in the list */
   [...stepsEl.children].forEach((li, k) => {
     li.classList.toggle('on', k === idx);
     li.firstChild.setAttribute('aria-current', k === idx ? 'step' : 'false');
@@ -325,7 +331,7 @@ function switchExp(k) {
   build(); auto = !reduce; setPlayLabel(); show(0);
 }
 
-/* ---------- الأحداث ---------- */
+/* ---------- Events: tabs, controls, step list ---------- */
 $('#tabA').onclick = () => switchExp('A');
 $('#tabB').onclick = () => switchExp('B');
 $('#bNext').onclick = () => { auto = false; setPlayLabel(); show(idx + 1); };
@@ -337,10 +343,13 @@ $('#bPlay').onclick = () => {
 };
 stepsEl.onclick = ev => { const b = ev.target.closest('button'); if (b) { auto = false; setPlayLabel(); show(+b.dataset.i); } };
 
-/* ---------- الفيديو ---------- */
+/* ---------- Video: load from VIDEO_PATH, show a hint if it fails ---------- */
 const vid = $('#vid');
-vid.src = VIDEO_PATH;
-vid.addEventListener('error', () => { vid.style.display = 'none'; $('#novideo').style.display = 'block'; });
+vid.src = encodeURI(VIDEO_PATH);
+vid.addEventListener('error', () => {              // show a hint if the file cannot be loaded
+  vid.style.display = 'none';
+  $('#novideo').style.display = 'block';
+});
 
 build(); setPlayLabel(); show(0);
 </script>
